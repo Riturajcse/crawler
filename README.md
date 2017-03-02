@@ -1,9 +1,9 @@
 # crawler
 A nodeJs app
 
-Steps to run local
+Steps to run in local
 
-- clone project in your local.<crawlerApp>
+- clone project in your local.(crawlerApp)
 - cd/crawlerApp
 - npm install
 - node index.js (this is using async library)
