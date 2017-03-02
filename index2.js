@@ -1,86 +1,89 @@
+'use strict';
 var request = require('request');
 var cheerio = require('cheerio');
-var URL = require('url-parse');
 var fs = require('fs-extra');
 var csv = require('fast-csv');
-var async = require('async');
 var _ = require('underscore');
 
-var pageToVisit = "https://medium.com/";
-console.log("Starting crawling from: " + pageToVisit);
+var urlToStart = "https://medium.com/";
+console.log("Starting crawling from: " + urlToStart);
 
-request(pageToVisit, function(error, response, body) {
-   if(error) {
-     console.log("Error: " + error);
-   }
+request(urlToStart, function(error, response, body) {
+  if(error) {
+    console.log("Error: " + error);
+  }
 
-   if(response.statusCode === 200) {
-     // Parse the document body
-     var body = cheerio.load(body);
+  if(response && response.statusCode === 200) {
+    // Parse the document body
+    var body = cheerio.load(body);
 
-     var bag = {
+    var bag = {
       totalLinks: [],
       $: body
-     };
+    };
     collectLinks(bag);
-   }
+  }
 });
+
+var allInternalLinks = [];
 
 function collectLinks(bag) {
   var $ = bag.$;
-  var allAbsoluteLinks = [];
 
-  var absoluteLinks = $("a[href^='http']");
-  absoluteLinks.each(function() {
-      allAbsoluteLinks.push($(this).attr('href'));
+  var internalLinks = $("a[href^='http']");
+  internalLinks.each(function() {
+    allInternalLinks.push($(this).attr('href'));
   });
 
- console.log('Found ' + allAbsoluteLinks.length + ' links from https://medium.com' );
- console.log('Now starting internal crawling ....');
+  console.log('Found ' + allInternalLinks.length + ' links from https://medium.com' );
+  console.log('Now starting internal crawling ....');
 
-function get5atatime() {
-  if(!_.isEmpty(allAbsoluteLinks)){
-    console.log(allAbsoluteLinks.length + ' more links to crawl!');
-  var chunk = allAbsoluteLinks.splice(0, 5);
+  getInternalLinksAsync(bag);
+}
 
-  var counter = [];
+function getInternalLinksAsync(bag) {
+  if (!_.isEmpty(allInternalLinks)) {
 
-  chunk.forEach(function(abs){
+    var linksChunk = allInternalLinks.splice(0, 5);
+
+    var counter = [];
+
+    linksChunk.forEach(function(abs){
 
       request(abs, function(error, response, body) {
-         if(error) {
-           console.log("Error: " + error);
-         }
+        if(error) {
+         console.log("Error: " + error);
+         getInternalLinksAsync(bag);
+        }
 
-         if(response.statusCode === 200) {
-           // Parse the document body
-           var $ = cheerio.load(body);
+        if(response && response.statusCode === 200) {
+          // Parse the document body
+          var $ = cheerio.load(body);
 
-            var absoluteLinks = $("a[href^='http']");
-            absoluteLinks.each(function() {
-                var links = [];
-                links.push($(this).attr('href'));
-                bag.totalLinks.push(links);
-            });
+          var internalLinks = $("a[href^='http']");
+          internalLinks.each(function() {
+            var links = [];
+            links.push($(this).attr('href'));
+            bag.totalLinks.push(links);
+            console.log('Number of Links collected: ',bag.totalLinks.length);
+          });
           counter.push(true);
-      if(counter.length === chunk.length){
-          get5atatime();
-      }
-         }
+          if(counter.length === linksChunk.length){
+            getInternalLinksAsync(bag);
+          }
+        }
       });
-  });
-}
-else {
-console.log("Finally " + bag.totalLinks.length + " totalLinks links stored in my1.csv");
-printData(bag);
-}
-}
-get5atatime();
+    });
+  }
+  else {
+    console.log("Finally " + bag.totalLinks.length + " total links stored in links2.csv");
+    storeLinksInFile(bag);
+  }
 }
 
-function printData(bag)
+function storeLinksInFile(bag)
 {
-  var ws = fs.createWriteStream('my2.csv');
+  var ws = fs.createWriteStream('links2.csv');
   csv
    .write(bag.totalLinks, {headers: true})
    .pipe(ws);
