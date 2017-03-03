@@ -28,9 +28,9 @@ request(urlToStart, function(error, response, body) {
         storeLinksInFile.bind(null, bag)
       ],
       function (err) {
-        console.log("Finally " + bag.totalLinks.length + " total links stored in links1.csv");
         if (err)
           console.log(err);
+        console.log("Finally " + bag.totalLinks.length + " total links stored in links1.csv");
       }
     );
   }
